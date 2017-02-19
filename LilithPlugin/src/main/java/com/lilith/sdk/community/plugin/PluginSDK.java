@@ -65,7 +65,7 @@ public class PluginSDK {
                 }
             }
         } else {
-            PluginRuntime.getInstance().createInstance();
+            PluginRuntime.createInstance();
             PluginRuntime.getInstance().init(getApplication());
         }
     }

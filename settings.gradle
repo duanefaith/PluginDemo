@@ -1,1 +1,1 @@
-include ':app', ':LilithPlugin'
+include ':app', ':LilithPlugin', ':PluginTest'

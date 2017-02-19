@@ -53,7 +53,6 @@ public interface IActivity {
     void onPictureInPictureModeChanged(boolean isInPictureInPictureMode);
     void onConfigurationChanged(Configuration newConfig);
     Object onRetainNonConfigurationInstance();
-    HashMap<String,Object> onRetainNonConfigurationChildInstances();
     void onLowMemory();
     void onTrimMemory(int level);
     boolean onKeyDown(int keyCode, KeyEvent event);

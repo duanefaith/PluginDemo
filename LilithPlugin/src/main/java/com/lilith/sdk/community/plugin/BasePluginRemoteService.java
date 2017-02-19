@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 /**
  * Created by duanefaith on 2017/2/16.
@@ -12,10 +13,13 @@ import android.os.RemoteException;
 
 public abstract class BasePluginRemoteService extends Service {
 
+    private static final String TAG = "BasePluginRemoteService";
+
     private final IRemoteInterface.Stub mRemoteInterface = new IRemoteInterface.Stub() {
 
         @Override
         public Bundle call(int code, Bundle params, IRemoteCallback callback) throws RemoteException {
+            Log.i(TAG, "called, code = " + code);
             if (PluginRuntime.getInstance().containsCode(code)) {
                 RemoteCallHandler handler = PluginRuntime.getInstance().getHandler(code);
                 if (handler != null) {

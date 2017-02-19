@@ -7,9 +7,19 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
+
+import dalvik.system.DexClassLoader;
 
 /**
  * Created by duanefaith on 2017/2/16.
@@ -39,6 +49,9 @@ public class PluginRuntime {
     private String mPackageName;
     private String mProcessName;
     private String mPluginAssetName;
+    private File mPluginFile;
+    private File mPluginOptimizeDir;
+    private DexClassLoader mDexClassLoader;
 
     private final Map<Integer, RemoteCallHandler> mRemoteCallHandlerMap = new HashMap<Integer, RemoteCallHandler>();
 
@@ -65,8 +78,87 @@ public class PluginRuntime {
         });
     }
 
+    public DexClassLoader getPluginClassLoader() {
+        return mDexClassLoader;
+    }
+
     private void installPlugin() {
         Log.d(TAG, "asset name = " + mPluginAssetName);
+        new Thread() {
+            @Override
+            public void run() {
+                Application application = getApplication();
+                if (application != null) {
+                    mPluginFile = new File(application.getFilesDir(), "/plugins/" + mPluginAssetName);
+                    mPluginOptimizeDir = new File(application.getFilesDir(), "/plugins_opt/");
+                    if (mPluginFile.exists()) {
+                        onPluginInstalled();
+                        return;
+                    }
+
+                    mPluginFile.getParentFile().mkdirs();
+
+                    boolean fileCreated = false;
+
+                    try {
+                        fileCreated = mPluginFile.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (!fileCreated) {
+                        onPluginInstallFailed();
+                        return;
+                    }
+
+                    BufferedInputStream inputStream = null;
+                    FileOutputStream outputStream = null;
+                    try {
+                        inputStream = new BufferedInputStream(application.getAssets().open(mPluginAssetName));
+                        outputStream = new FileOutputStream(mPluginFile, false);
+                        byte[] buffer = new byte[8096];
+                        int length = 0;
+                        while ((length = inputStream.read(buffer)) > -1) {
+                            outputStream.write(buffer, 0, length);
+                        }
+                        outputStream.flush();
+                        onPluginInstalled();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        onPluginInstallFailed();
+                    } finally {
+                        if (inputStream != null) {
+                            try {
+                                inputStream.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        if (outputStream != null) {
+                            try {
+                                outputStream.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            }
+        }.start();
+    }
+
+    private void onPluginInstalled() {
+        Log.i(TAG, "onPluginInstalled...");
+        if (!mPluginOptimizeDir.exists()) {
+            mPluginOptimizeDir.mkdirs();
+        }
+        mDexClassLoader = new DexClassLoader(mPluginFile.getAbsolutePath()
+                , mPluginOptimizeDir.getAbsolutePath(), null, this.getClass().getClassLoader());
+    }
+
+    private void onPluginInstallFailed() {
+        Log.i(TAG, "onPluginInstallFailed...");
     }
 
     public Application getApplication() {

@@ -17,6 +17,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity android:name=".PluginContainerActivity"
+            android:process=":lilith_plugin"/>
 
         <service android:name=".PluginRemoteService"
             android:process=":lilith_plugin"/>
