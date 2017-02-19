@@ -19,6 +19,8 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 
 import dalvik.system.DexClassLoader;
@@ -44,18 +46,23 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
                 try {
                     Class<?> clazz = classLoader.loadClass(intent.getStringExtra(PARAM_PLUGIN_ACTIVITY));
                     if (clazz != null) {
-                        Object obj = clazz.newInstance();
+                        Constructor<?> constructor = clazz.getDeclaredConstructor();
+                        constructor.setAccessible(true);
+                        Object obj = constructor.newInstance();
                         mPluginActivity = (IPluginActivity) obj;
                         mPluginActivity.attachActivity(this);
                     }
                 } catch (ClassNotFoundException e) {
                     e.printStackTrace();
-                }
-                catch (InstantiationException e) {
+                } catch (InstantiationException e) {
                     e.printStackTrace();
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 } catch (ClassCastException e) {
+                    e.printStackTrace();
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
                     e.printStackTrace();
                 }
             }
@@ -227,7 +234,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         boolean ret = super.onKeyDown(keyCode, event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onKeyDown(keyCode, event);
+            mPluginActivity.onKeyDown(keyCode, event);
         }
         return ret;
     }
@@ -235,7 +242,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onKeyLongPress(int keyCode, KeyEvent event) {
         boolean ret = super.onKeyLongPress(keyCode, event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onKeyLongPress(keyCode, event);
+            mPluginActivity.onKeyLongPress(keyCode, event);
         }
         return ret;
     }
@@ -243,7 +250,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onKeyUp(int keyCode, KeyEvent event) {
         boolean ret = super.onKeyUp(keyCode, event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onKeyUp(keyCode, event);
+            mPluginActivity.onKeyUp(keyCode, event);
         }
         return ret;
     }
@@ -251,7 +258,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event) {
         boolean ret = super.onKeyMultiple(keyCode, repeatCount, event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onKeyMultiple(keyCode, repeatCount, event);
+            mPluginActivity.onKeyMultiple(keyCode, repeatCount, event);
         }
         return ret;
     }
@@ -266,7 +273,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onKeyShortcut(int keyCode, KeyEvent event) {
         boolean ret = super.onKeyShortcut(keyCode, event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onKeyShortcut(keyCode, event);
+            mPluginActivity.onKeyShortcut(keyCode, event);
         }
         return ret;
     }
@@ -274,7 +281,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onTouchEvent(MotionEvent event) {
         boolean ret = super.onTouchEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onTouchEvent(event);
+            mPluginActivity.onTouchEvent(event);
         }
         return ret;
     }
@@ -282,7 +289,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onTrackballEvent(MotionEvent event) {
         boolean ret = super.onTrackballEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onTrackballEvent(event);
+            mPluginActivity.onTrackballEvent(event);
         }
         return ret;
     }
@@ -290,7 +297,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean onGenericMotionEvent(MotionEvent event) {
         boolean ret = super.onGenericMotionEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.onGenericMotionEvent(event);
+            mPluginActivity.onGenericMotionEvent(event);
         }
         return ret;
     }
@@ -340,7 +347,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchKeyEvent(KeyEvent event) {
         boolean ret = super.dispatchKeyEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchKeyEvent(event);
+            mPluginActivity.dispatchKeyEvent(event);
         }
         return ret;
     }
@@ -348,7 +355,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchKeyShortcutEvent(KeyEvent event) {
         boolean ret = super.dispatchKeyShortcutEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchKeyShortcutEvent(event);
+            mPluginActivity.dispatchKeyShortcutEvent(event);
         }
         return ret;
     }
@@ -356,7 +363,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchTouchEvent(MotionEvent ev) {
         boolean ret = super.dispatchTouchEvent(ev);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchTouchEvent(ev);
+            mPluginActivity.dispatchTouchEvent(ev);
         }
         return ret;
     }
@@ -364,7 +371,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchTrackballEvent(MotionEvent ev) {
         boolean ret = super.dispatchTrackballEvent(ev);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchTrackballEvent(ev);
+            mPluginActivity.dispatchTrackballEvent(ev);
         }
         return ret;
     }
@@ -372,7 +379,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchGenericMotionEvent(MotionEvent ev) {
         boolean ret = super.dispatchGenericMotionEvent(ev);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchGenericMotionEvent(ev);
+            mPluginActivity.dispatchGenericMotionEvent(ev);
         }
         return ret;
     }
@@ -380,7 +387,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
     public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
         boolean ret =  super.dispatchPopulateAccessibilityEvent(event);
         if (mPluginActivity != null) {
-            return mPluginActivity.dispatchPopulateAccessibilityEvent(event);
+            mPluginActivity.dispatchPopulateAccessibilityEvent(event);
         }
         return ret;
     }
