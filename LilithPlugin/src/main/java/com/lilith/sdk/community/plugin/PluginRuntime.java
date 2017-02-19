@@ -1,21 +1,22 @@
 package com.lilith.sdk.community.plugin;
 
-import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,6 +53,8 @@ public class PluginRuntime {
     private File mPluginFile;
     private File mPluginOptimizeDir;
     private DexClassLoader mDexClassLoader;
+    private Resources mPluginResources;
+    private LayoutInflater mInflater;
 
     private final Map<Integer, RemoteCallHandler> mRemoteCallHandlerMap = new HashMap<Integer, RemoteCallHandler>();
 
@@ -80,6 +83,14 @@ public class PluginRuntime {
 
     public DexClassLoader getPluginClassLoader() {
         return mDexClassLoader;
+    }
+
+    public Resources getPluginResources() {
+        return mPluginResources;
+    }
+
+    public LayoutInflater getPluginLayoutInflater() {
+        return mInflater;
     }
 
     private void installPlugin() {
@@ -150,11 +161,63 @@ public class PluginRuntime {
 
     private void onPluginInstalled() {
         Log.i(TAG, "onPluginInstalled...");
+        createClassLoader();
+        createAndInjectResources();
+    }
+
+    private boolean createClassLoader() {
         if (!mPluginOptimizeDir.exists()) {
             mPluginOptimizeDir.mkdirs();
         }
         mDexClassLoader = new DexClassLoader(mPluginFile.getAbsolutePath()
                 , mPluginOptimizeDir.getAbsolutePath(), null, this.getClass().getClassLoader());
+        return true;
+    }
+
+    private boolean createAndInjectResources() {
+        Application application = getApplication();
+        if (application == null) {
+            return false;
+        }
+        try {
+            Constructor<AssetManager> constructor = AssetManager.class.getDeclaredConstructor();
+            if (constructor != null) {
+                AssetManager assetManager = constructor.newInstance();
+                Method addAssetPath = AssetManager.class.getDeclaredMethod("addAssetPath", String.class);
+                if (addAssetPath != null) {
+                    addAssetPath.setAccessible(true);
+                    addAssetPath.invoke(assetManager, mPluginFile.getAbsolutePath());
+
+                    mPluginResources = new Resources(assetManager, application.getResources().getDisplayMetrics(),
+                            application.getResources().getConfiguration());
+                    Context baseContext = application.getBaseContext();
+                    Class<?> clazz = Class.forName("android.app.ContextImpl");
+                    if (clazz != null) {
+                        Field mResources = clazz.getDeclaredField("mResources");
+                        if (mResources != null) {
+                            mResources.setAccessible(true);
+                            mResources.set(baseContext, mPluginResources);
+
+                            mInflater = LayoutInflater.from(baseContext);
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private void onPluginInstallFailed() {

@@ -10,6 +10,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -21,7 +22,6 @@ import android.view.accessibility.AccessibilityEvent;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
 
 import dalvik.system.DexClassLoader;
 
@@ -71,6 +71,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
             finish();
             return;
         }
+        Log.i(TAG, "plugin activity loaded @" + mPluginActivity.getClass().getName());
         mPluginActivity.onCreate(savedInstanceState);
     }
 

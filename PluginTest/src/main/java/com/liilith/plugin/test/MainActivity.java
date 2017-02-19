@@ -1,21 +1,32 @@
 package com.liilith.plugin.test;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.Toast;
 
 import com.lilith.sdk.community.plugin.BasePluginActivity;
 
-public class MainActivity extends BasePluginActivity {
+public class MainActivity extends BasePluginActivity implements View.OnClickListener {
+
+    private Button mTestBtn;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        View view = new View(this);
-        view.setBackgroundColor(Color.RED);
-        setContentView(view, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT
-                , ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(R.layout.activity_main);
+        mTestBtn = (Button) findViewById(R.id.test);
+        mTestBtn.setOnClickListener(this);
     }
 
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.test:
+                Toast.makeText(this, "It's a test...", Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                break;
+        }
+    }
 }

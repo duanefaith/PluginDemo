@@ -3,6 +3,7 @@ package com.lilith.sdk.community.plugin;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -10,7 +11,9 @@ import android.graphics.Canvas;
 import android.os.Bundle;
 import android.util.AttributeSet;
 import android.view.ContextMenu;
+import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -31,9 +34,10 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
     public void attachActivity(Activity parent) {
         if (parent != null) {
             attachBaseContext(parent.getBaseContext());
-            Field[] fields= Activity.class.getDeclaredFields();
-            if (fields != null && fields.length > 0) {
-                for (Field field : fields) {
+
+            Field[] activityFields= Activity.class.getDeclaredFields();
+            if (activityFields != null && activityFields.length > 0) {
+                for (Field field : activityFields) {
                     if (field != null) {
                         field.setAccessible(true);
                         try {
@@ -44,8 +48,47 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
                     }
                 }
             }
+
+            Field[] contextThemeWrapperFields = ContextThemeWrapper.class.getDeclaredFields();
+            if (contextThemeWrapperFields != null && contextThemeWrapperFields.length > 0) {
+                for (Field field : contextThemeWrapperFields) {
+                    if (field != null) {
+                        field.setAccessible(true);
+                        try {
+                            field.set(this, field.get(parent));
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+
             mParent = parent;
         }
+    }
+
+    @Override
+    public void setContentView(int layoutResID) {
+        super.setContentView(getLayoutInflater().inflate(layoutResID, null));
+    }
+
+    @Override
+    public Resources getResources() {
+        return PluginRuntime.getInstance().getPluginResources();
+    }
+
+    @Override
+    public AssetManager getAssets() {
+        Resources resources = getResources();
+        if (resources != null) {
+            return resources.getAssets();
+        }
+        return null;
+    }
+
+    @Override
+    public LayoutInflater getLayoutInflater() {
+        return PluginRuntime.getInstance().getPluginLayoutInflater();
     }
 
     @Override
@@ -342,4 +385,5 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
     public void onVisibleBehindCanceled() {
 
     }
+
 }
