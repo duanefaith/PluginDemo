@@ -56,6 +56,8 @@ public class PluginRuntime {
     private Resources mPluginResources;
     private LayoutInflater mInflater;
 
+    private long mStartTimeStamp;
+
     private final Map<Integer, RemoteCallHandler> mRemoteCallHandlerMap = new HashMap<Integer, RemoteCallHandler>();
 
     private PluginRuntime() {
@@ -95,6 +97,7 @@ public class PluginRuntime {
 
     private void installPlugin() {
         Log.d(TAG, "asset name = " + mPluginAssetName);
+        mStartTimeStamp = System.currentTimeMillis();
         new Thread() {
             @Override
             public void run() {
@@ -163,6 +166,7 @@ public class PluginRuntime {
         Log.i(TAG, "onPluginInstalled...");
         createClassLoader();
         createAndInjectResources();
+        Log.i(TAG, "Plugin load succeed, consumption = " + (System.currentTimeMillis() - mStartTimeStamp));
     }
 
     private boolean createClassLoader() {

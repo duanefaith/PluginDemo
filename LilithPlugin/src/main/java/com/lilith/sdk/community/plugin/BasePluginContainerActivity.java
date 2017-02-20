@@ -39,6 +39,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        long start = System.currentTimeMillis();
         Intent intent = getIntent();
         if (intent.hasExtra(PARAM_PLUGIN_ACTIVITY)) {
             DexClassLoader classLoader = PluginRuntime.getInstance().getPluginClassLoader();
@@ -71,7 +72,8 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
             finish();
             return;
         }
-        Log.i(TAG, "plugin activity loaded @" + mPluginActivity.getClass().getName());
+        Log.i(TAG, "plugin activity loaded @" + mPluginActivity.getClass().getName()
+                + ", consumption = " + (System.currentTimeMillis() - start));
         mPluginActivity.onCreate(savedInstanceState);
     }
 
