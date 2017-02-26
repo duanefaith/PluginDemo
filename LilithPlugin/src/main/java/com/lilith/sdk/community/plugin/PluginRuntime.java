@@ -56,6 +56,9 @@ public class PluginRuntime {
     private Resources mPluginResources;
     private LayoutInflater mInflater;
 
+    private Class<? extends BasePluginContainerActivity> mActivityClass;
+    private Class<? extends BasePluginRemoteService> mServiceClass;
+
     private long mStartTimeStamp;
 
     private final Map<Integer, RemoteCallHandler> mRemoteCallHandlerMap = new HashMap<Integer, RemoteCallHandler>();
@@ -70,12 +73,14 @@ public class PluginRuntime {
         }
         mAppRef = new WeakReference<Application>(application);
         mPackageName = application.getPackageName();
-        registerRemoteCallHandler(Constants.CODE_SET_ASSET_NAME, new RemoteCallHandler() {
+        registerRemoteCallHandler(Constants.CODE_SET_PLUIN_INIT, new RemoteCallHandler() {
 
             @Override
             public Bundle call(Bundle params, IRemoteCallback callback) {
                 if (params != null && params.containsKey(Constants.PARAM_ASSET_NAME)) {
                     mPluginAssetName = params.getString(Constants.PARAM_ASSET_NAME);
+                    mActivityClass = (Class<? extends BasePluginContainerActivity>) params.getSerializable(Constants.PARAM_ACTIVITY_CLASS);
+                    mServiceClass = (Class<? extends BasePluginRemoteService>) params.getSerializable(Constants.PARAM_SERVICE_CLASS);
                     installPlugin();
                 }
                 return null;
@@ -251,4 +256,11 @@ public class PluginRuntime {
         return mRemoteCallHandlerMap.containsKey(code);
     }
 
+    public Class<? extends BasePluginContainerActivity> getActivityClass() {
+        return mActivityClass;
+    }
+
+    public Class<? extends BasePluginRemoteService> getServiceClass() {
+        return mServiceClass;
+    }
 }

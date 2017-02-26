@@ -5,7 +5,9 @@ package com.lilith.sdk.community.plugin;
  */
 
 public interface Constants {
-    int CODE_SET_ASSET_NAME = 1;
+    int CODE_SET_PLUIN_INIT = 1;
 
     String PARAM_ASSET_NAME = "asset_name";
+    String PARAM_ACTIVITY_CLASS = "activity_class";
+    String PARAM_SERVICE_CLASS = "service_class";
 }

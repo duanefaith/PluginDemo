@@ -19,6 +19,7 @@
         </activity>
         
         <activity android:name=".PluginContainerActivity"
+            android:theme="@style/Theme.AppCompat"
             android:process=":lilith_plugin"/>
 
         <service android:name=".PluginRemoteService"

@@ -45,8 +45,9 @@ public class PluginSDK {
 
     }
 
-    public void registerPluginRemoteService(Class<? extends BasePluginRemoteService> clazz, String assetName) {
-        mRemoteServiceMap.put(clazz, new RemoteServiceInfo(clazz, assetName));
+    public void registerPluginRemoteService(Class<? extends BasePluginRemoteService> serviceClass
+            , Class<? extends BasePluginContainerActivity> activityClass, String assetName) {
+        mRemoteServiceMap.put(serviceClass, new RemoteServiceInfo(serviceClass, activityClass, assetName));
     }
 
     public void init(Application application) {
@@ -133,9 +134,11 @@ public class PluginSDK {
 
                         Bundle bundle = new Bundle();
                         bundle.putString(Constants.PARAM_ASSET_NAME, remoteServiceInfo.getAssetPluginName());
+                        bundle.putSerializable(Constants.PARAM_ACTIVITY_CLASS, remoteServiceInfo.activityClass);
+                        bundle.putSerializable(Constants.PARAM_SERVICE_CLASS, remoteServiceInfo.serviceClass);
 
                         try {
-                            remoteServiceInfo.getRemoteInterface().call(Constants.CODE_SET_ASSET_NAME, bundle, null);
+                            remoteServiceInfo.getRemoteInterface().call(Constants.CODE_SET_PLUIN_INIT, bundle, null);
                         } catch (RemoteException e) {
                             e.printStackTrace();
                         }
@@ -168,12 +171,15 @@ public class PluginSDK {
     private class RemoteServiceInfo {
 
         private Class<? extends BasePluginRemoteService> serviceClass;
+        private Class<? extends BasePluginContainerActivity> activityClass;
         private String assetPluginName;
         private IRemoteInterface remoteInterface;
         private PluginServiceConnection connection;
 
-        private RemoteServiceInfo(Class<? extends BasePluginRemoteService> serviceClass, String assetPluginName) {
+        private RemoteServiceInfo(Class<? extends BasePluginRemoteService> serviceClass
+                , Class<? extends BasePluginContainerActivity> activityClass, String assetPluginName) {
             this.serviceClass = serviceClass;
+            this.activityClass = activityClass;
             this.assetPluginName = assetPluginName;
         }
 

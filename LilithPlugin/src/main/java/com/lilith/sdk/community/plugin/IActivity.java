@@ -52,7 +52,6 @@ public interface IActivity {
     void onMultiWindowModeChanged(boolean isInMultiWindowMode);
     void onPictureInPictureModeChanged(boolean isInPictureInPictureMode);
     void onConfigurationChanged(Configuration newConfig);
-    Object onRetainNonConfigurationInstance();
     void onLowMemory();
     void onTrimMemory(int level);
     boolean onKeyDown(int keyCode, KeyEvent event);
@@ -80,7 +79,6 @@ public interface IActivity {
     boolean onCreatePanelMenu(int featureId, Menu menu);
     boolean onPreparePanel(int featureId, View view, Menu menu);
     boolean onMenuOpened(int featureId, Menu menu);
-    boolean onMenuItemSelected(int featureId, MenuItem item);
     void onPanelClosed(int featureId, Menu menu);
     boolean onCreateOptionsMenu(Menu menu);
     boolean onPrepareOptionsMenu(Menu menu);

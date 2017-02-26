@@ -1,5 +1,6 @@
 package com.lilith.sdk.community.plugin;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +10,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.view.ContextMenu;
 import android.view.ContextThemeWrapper;
@@ -21,47 +23,45 @@ import android.view.View;
 import android.view.WindowManager;
 
 import java.lang.reflect.Field;
+import java.util.Set;
 
 /**
  * Created by Administrator on 2017/2/19.
  */
 
-public class BasePluginActivity extends Activity implements IPluginActivity {
+public class BasePluginActivity extends AppCompatActivity implements IPluginActivity {
 
     private Activity mParent;
+
+    private void setFields(Class clazz, Object injecter) {
+        if (clazz != null
+                && injecter != null
+                && clazz.isAssignableFrom(this.getClass())
+                && clazz.isAssignableFrom(injecter.getClass())) {
+            Field[] fields= clazz.getDeclaredFields();
+            if (fields != null && fields.length > 0) {
+                for (Field field : fields) {
+                    if (field != null) {
+                        field.setAccessible(true);
+                        try {
+                            field.set(this, field.get(injecter));
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     @Override
     public void attachActivity(Activity parent) {
         if (parent != null) {
             attachBaseContext(parent.getBaseContext());
 
-            Field[] activityFields= Activity.class.getDeclaredFields();
-            if (activityFields != null && activityFields.length > 0) {
-                for (Field field : activityFields) {
-                    if (field != null) {
-                        field.setAccessible(true);
-                        try {
-                            field.set(this, field.get(parent));
-                        } catch (IllegalAccessException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
-
-            Field[] contextThemeWrapperFields = ContextThemeWrapper.class.getDeclaredFields();
-            if (contextThemeWrapperFields != null && contextThemeWrapperFields.length > 0) {
-                for (Field field : contextThemeWrapperFields) {
-                    if (field != null) {
-                        field.setAccessible(true);
-                        try {
-                            field.set(this, field.get(parent));
-                        } catch (IllegalAccessException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }
+            setFields(AppCompatActivity.class, parent);
+            setFields(Activity.class, parent);
+            setFields(ContextThemeWrapper.class, parent);
 
             mParent = parent;
         }
@@ -70,6 +70,99 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
     @Override
     public void setContentView(int layoutResID) {
         super.setContentView(getLayoutInflater().inflate(layoutResID, null));
+    }
+
+    private boolean isPluginIntent(Intent intent) {
+        if (intent != null
+                && intent.getComponent() != null
+                && intent.getComponent().getClassName() != null) {
+            Class clazz = null;
+            try {
+                clazz = PluginRuntime.getInstance().getPluginClassLoader().loadClass(intent.getComponent().getClassName());
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+            if (clazz != null
+                    && clazz.getClassLoader() == PluginRuntime.getInstance().getPluginClassLoader()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Intent parsePluginIntent(Intent intent) {
+        Intent newIntent = new Intent(mParent, PluginRuntime.getInstance().getActivityClass());
+        newIntent.putExtra(BasePluginContainerActivity.PARAM_PLUGIN_ACTIVITY, intent.getComponent().getClassName());
+        if (intent.getAction() != null) {
+            newIntent.setAction(intent.getAction());
+        }
+        if (intent.getData() != null) {
+            newIntent.setData(intent.getData());
+        }
+        Set<String> categories = intent.getCategories();
+        if (categories != null && !categories.isEmpty()) {
+            for (String category : categories) {
+                newIntent.addCategory(category);
+            }
+        }
+        return newIntent;
+    }
+
+    @Override
+    public void startActivity(Intent intent) {
+        if (isPluginIntent(intent)) {
+            mParent.startActivity(parsePluginIntent(intent));
+        } else {
+            mParent.startActivity(intent);
+        }
+    }
+
+    @TargetApi(16)
+    @Override
+    public void startActivity(Intent intent, Bundle options) {
+        if (isPluginIntent(intent)) {
+            mParent.startActivity(parsePluginIntent(intent), options);
+        } else {
+            mParent.startActivity(intent, options);
+        }
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode) {
+        if (isPluginIntent(intent)) {
+            mParent.startActivityForResult(parsePluginIntent(intent), requestCode);
+        } else {
+            mParent.startActivityForResult(intent, requestCode);
+        }
+    }
+
+    @TargetApi(16)
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
+        if (isPluginIntent(intent)) {
+            mParent.startActivityForResult(parsePluginIntent(intent), requestCode, options);
+        } else {
+            mParent.startActivityForResult(intent, requestCode, options);
+        }
+    }
+
+    @Override
+    public boolean startActivityIfNeeded(Intent intent, int requestCode) {
+        if (isPluginIntent(intent)) {
+            return mParent.startActivityIfNeeded(parsePluginIntent(intent), requestCode);
+        } else {
+            return mParent.startActivityIfNeeded(intent, requestCode);
+        }
+    }
+
+    @TargetApi(16)
+    @Override
+    public boolean startActivityIfNeeded(Intent intent, int requestCode, Bundle options) {
+        if (isPluginIntent(intent)) {
+            return mParent.startActivityIfNeeded(parsePluginIntent(intent), requestCode, options);
+        } else {
+            return mParent.startActivityIfNeeded(intent, requestCode, options);
+        }
     }
 
     @Override
@@ -183,22 +276,17 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
 
     @Override
     public void onMultiWindowModeChanged(boolean isInMultiWindowMode) {
-
+        super.onMultiWindowModeChanged(isInMultiWindowMode);
     }
 
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
-
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
 
-    }
-
-    @Override
-    public Object onRetainNonConfigurationInstance() {
-        return null;
     }
 
     @Override
@@ -303,11 +391,6 @@ public class BasePluginActivity extends Activity implements IPluginActivity {
 
     @Override
     public boolean onMenuOpened(int featureId, Menu menu) {
-        return false;
-    }
-
-    @Override
-    public boolean onMenuItemSelected(int featureId, MenuItem item) {
         return false;
     }
 

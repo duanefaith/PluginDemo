@@ -13,7 +13,8 @@ public class BaseApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        PluginSDK.getInstance().registerPluginRemoteService(PluginRemoteService.class, "plugin_test.apk");
+        PluginSDK.getInstance().registerPluginRemoteService(PluginRemoteService.class
+                , PluginContainerActivity.class, "plugin_test.apk");
         PluginSDK.getInstance().init(this);
     }
 

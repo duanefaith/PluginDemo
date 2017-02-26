@@ -1,5 +1,6 @@
 package com.lilith.sdk.community.plugin;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -9,6 +10,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -29,7 +31,7 @@ import dalvik.system.DexClassLoader;
  * Created by duanefaith on 2017/2/16.
  */
 
-public abstract class BasePluginContainerActivity extends Activity implements IActivity {
+public abstract class BasePluginContainerActivity extends AppCompatActivity implements IActivity {
 
     private static final String TAG = "BasePluginContainerActivity";
 
@@ -37,6 +39,7 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
 
     private IPluginActivity mPluginActivity;
 
+    @SuppressLint("LongLogTag")
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         long start = System.currentTimeMillis();
@@ -210,14 +213,6 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
         if (mPluginActivity != null) {
             mPluginActivity.onConfigurationChanged(newConfig);
         }
-    }
-
-    public Object onRetainNonConfigurationInstance() {
-        Object ret = super.onRetainNonConfigurationInstance();
-        if (mPluginActivity != null) {
-            return mPluginActivity.onRetainNonConfigurationInstance();
-        }
-        return ret;
     }
 
     public void onLowMemory() {
@@ -423,14 +418,6 @@ public abstract class BasePluginContainerActivity extends Activity implements IA
         boolean ret = super.onMenuOpened(featureId, menu);
         if (mPluginActivity != null) {
             return mPluginActivity.onMenuOpened(featureId, menu);
-        }
-        return ret;
-    }
-
-    public boolean onMenuItemSelected(int featureId, MenuItem item) {
-        boolean ret = super.onMenuItemSelected(featureId, item);
-        if (mPluginActivity != null) {
-            return mPluginActivity.onMenuItemSelected(featureId, item);
         }
         return ret;
     }
