@@ -4,21 +4,29 @@ import android.app.Application;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import dalvik.system.DexClassLoader;
 
@@ -30,17 +38,40 @@ public class PluginRuntime {
 
     private static final String TAG = "PluginRuntime";
 
-    private static PluginRuntime mInstance = null;
+    private static final List<String> sNativeLibPaths = new ArrayList<String>();
+
+    static {
+        if (Build.VERSION.SDK_INT >= 21) {
+            String[] supportedAbis = Build.SUPPORTED_ABIS;
+            if (supportedAbis != null
+                    && supportedAbis.length > 0) {
+                for (String supportedAbi : supportedAbis) {
+                    if (supportedAbi != null) {
+                        sNativeLibPaths.add(("lib/" + supportedAbi + "/").toLowerCase());
+                    }
+                }
+            }
+        } else {
+            if (Build.CPU_ABI != null) {
+                sNativeLibPaths.add(("lib/" + Build.CPU_ABI + "/").toLowerCase());
+            }
+            if (Build.CPU_ABI2 != null) {
+                sNativeLibPaths.add(("lib/" + Build.CPU_ABI2 + "/").toLowerCase());
+            }
+        }
+    }
+
+    private static PluginRuntime sInstance = null;
 
     public static PluginRuntime getInstance() {
-        return mInstance;
+        return sInstance;
     }
 
     static void createInstance() {
-        if (mInstance == null) {
+        if (sInstance == null) {
             synchronized (PluginRuntime.class) {
-                if (mInstance == null) {
-                    mInstance = new PluginRuntime();
+                if (sInstance == null) {
+                    sInstance = new PluginRuntime();
                 }
             }
         }
@@ -51,6 +82,8 @@ public class PluginRuntime {
     private String mProcessName;
     private String mPluginAssetName;
     private File mPluginFile;
+    private File mPluginExtractedDir;
+    private File mPluginNativeDir;
     private File mPluginOptimizeDir;
     private DexClassLoader mDexClassLoader;
     private Resources mPluginResources;
@@ -169,17 +202,143 @@ public class PluginRuntime {
 
     private void onPluginInstalled() {
         Log.i(TAG, "onPluginInstalled...");
+        extractSoFiles();
         createClassLoader();
         createAndInjectResources();
         Log.i(TAG, "Plugin load succeed, consumption = " + (System.currentTimeMillis() - mStartTimeStamp));
+    }
+
+    private boolean isAvailableNativeEntry(ZipEntry entry) {
+        if (entry == null || entry.isDirectory()) {
+            return false;
+        }
+        String name = entry.getName();
+        if (name == null) {
+            return false;
+        }
+        for (String availPath : sNativeLibPaths) {
+            if (name.startsWith(availPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean writeFileFromZip(ZipInputStream zis, File output) {
+        if (output == null) {
+            return false;
+        }
+        if (!output.exists()) {
+            if (!output.getParentFile().exists()) {
+                output.getParentFile().mkdirs();
+            }
+            boolean created = false;
+            try {
+                created = output.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (created) {
+                FileOutputStream fos = null;
+                try {
+                    fos = new FileOutputStream(output);
+                    byte[] buffer = new byte[8096];
+                    int readLen = 0;
+                    while ((readLen = zis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, readLen);
+                    }
+                    fos.flush();
+                    return true;
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (fos != null) {
+                        try {
+                            fos.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                return false;
+            } else {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    private boolean extractSoFiles() {
+        mPluginExtractedDir = new File(mPluginFile.getParent()
+                , "/extracted_" + mPluginFile.getName() + "/");
+
+        ZipInputStream zis = null;
+        try {
+            zis = new ZipInputStream(new FileInputStream(mPluginFile));
+            ZipEntry entry = null;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (isAvailableNativeEntry(entry)) {
+                    File extractedNativeFile = new File(mPluginExtractedDir, entry.getName());
+                    writeFileFromZip(zis, extractedNativeFile);
+                }
+                zis.closeEntry();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (zis != null) {
+                try {
+                    zis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        for (String availPath : sNativeLibPaths) {
+            File nativeLibPath = new File(mPluginExtractedDir, availPath);
+            if (nativeLibPath.exists() && nativeLibPath.isDirectory()) {
+
+                File[] files = nativeLibPath.listFiles(new FilenameFilter() {
+                    @Override
+                    public boolean accept(File dir, String name) {
+                        if (name != null && name.endsWith(".so")){
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+
+                if (files != null && files.length > 0) {
+                    mPluginNativeDir = nativeLibPath;
+                    break;
+                }
+            }
+        }
+
+        return true;
     }
 
     private boolean createClassLoader() {
         if (!mPluginOptimizeDir.exists()) {
             mPluginOptimizeDir.mkdirs();
         }
-        mDexClassLoader = new DexClassLoader(mPluginFile.getAbsolutePath()
-                , mPluginOptimizeDir.getAbsolutePath(), null, this.getClass().getClassLoader());
+
+        String pluginPath = mPluginFile.getAbsolutePath();
+        String pluginOptPath = mPluginOptimizeDir.getAbsolutePath();
+        String pluginNativePath = mPluginNativeDir == null ? null : mPluginNativeDir.getAbsolutePath();
+
+        Log.i(TAG, "pluginPath = " + pluginPath + ", pluginOptPath = " + pluginOptPath + ", pluginNativePath = " + pluginNativePath);
+
+        mDexClassLoader = new DexClassLoader(pluginPath
+                , pluginOptPath
+                , pluginNativePath
+                , this.getClass().getClassLoader());
         return true;
     }
 
