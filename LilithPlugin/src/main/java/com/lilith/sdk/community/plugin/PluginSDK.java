@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -19,7 +20,7 @@ import java.util.Map;
  * Created by duanefaith on 2017/2/16.
  */
 
-public class PluginSDK {
+public class PluginSDK implements IApplication {
 
     private static final String TAG = "PluginSDK";
 
@@ -36,6 +37,7 @@ public class PluginSDK {
         return mInstance;
     }
 
+    private IApplication mAppProxy;
     private WeakReference<Application> mAppRef;
     private String mPackageName;
     private String mProcessName;
@@ -50,7 +52,7 @@ public class PluginSDK {
         mRemoteServiceMap.put(serviceClass, new RemoteServiceInfo(serviceClass, activityClass, assetName));
     }
 
-    public void init(Application application) {
+    public void onCreate(Application application) {
         if (application == null) {
             return;
         }
@@ -68,19 +70,7 @@ public class PluginSDK {
         } else {
             PluginRuntime.createInstance();
             PluginRuntime.getInstance().init(getApplication());
-        }
-    }
-
-    public void terminate() {
-        Application application = getApplication();
-        if (isMainProcess()) {
-            if (application != null && !mRemoteServiceMap.isEmpty()) {
-                for (RemoteServiceInfo info : mRemoteServiceMap.values()) {
-                    if (info != null && info.getConnection() != null) {
-                        application.unbindService(info.getConnection());
-                    }
-                }
-            }
+            mAppProxy = PluginRuntime.getInstance();
         }
     }
 
@@ -113,6 +103,44 @@ public class PluginSDK {
         String processName = getProcessName();
         return !TextUtils.isEmpty(processName)
                 && processName.trim().equals(mPackageName);
+    }
+
+    @Override
+    public void onTerminate() {
+        if (mAppProxy != null) {
+            mAppProxy.onTerminate();
+        }
+        Application application = getApplication();
+        if (isMainProcess()) {
+            if (application != null && !mRemoteServiceMap.isEmpty()) {
+                for (RemoteServiceInfo info : mRemoteServiceMap.values()) {
+                    if (info != null && info.getConnection() != null) {
+                        application.unbindService(info.getConnection());
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        if (mAppProxy != null) {
+            mAppProxy.onConfigurationChanged(newConfig);
+        }
+    }
+
+    @Override
+    public void onLowMemory() {
+        if (mAppProxy != null) {
+            mAppProxy.onLowMemory();
+        }
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        if (mAppProxy != null) {
+            mAppProxy.onTrimMemory(level);
+        }
     }
 
     private class PluginServiceConnection implements ServiceConnection {
@@ -207,4 +235,5 @@ public class PluginSDK {
             this.connection = connection;
         }
     }
+
 }

@@ -1,11 +1,17 @@
 package com.lilith.sdk.community.plugin;
 
+import android.annotation.TargetApi;
 import android.app.Application;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 
@@ -34,7 +40,7 @@ import dalvik.system.DexClassLoader;
  * Created by duanefaith on 2017/2/16.
  */
 
-public class PluginRuntime {
+public class PluginRuntime implements IApplication {
 
     private static final String TAG = "PluginRuntime";
 
@@ -88,6 +94,8 @@ public class PluginRuntime {
     private DexClassLoader mDexClassLoader;
     private Resources mPluginResources;
     private LayoutInflater mInflater;
+    private PackageInfo mArchiveInfo;
+    private Application mPluginApplication;
 
     private Class<? extends BasePluginContainerActivity> mActivityClass;
     private Class<? extends BasePluginRemoteService> mServiceClass;
@@ -205,7 +213,69 @@ public class PluginRuntime {
         extractSoFiles();
         createClassLoader();
         createAndInjectResources();
+        retrievePackageInfo();
         Log.i(TAG, "Plugin load succeed, consumption = " + (System.currentTimeMillis() - mStartTimeStamp));
+    }
+
+    private void retrievePackageInfo() {
+        mArchiveInfo = PluginRuntime.getInstance().getApplication()
+                .getPackageManager().getPackageArchiveInfo(mPluginFile.getAbsolutePath()
+                        , PackageManager.GET_ACTIVITIES
+                                | PackageManager.GET_SERVICES
+                                | PackageManager.GET_RECEIVERS
+                                | PackageManager.GET_PROVIDERS
+                                | PackageManager.GET_INTENT_FILTERS
+                                | PackageManager.GET_INSTRUMENTATION
+                                | PackageManager.GET_CONFIGURATIONS
+                                | PackageManager.GET_META_DATA
+                                | PackageManager.GET_SHARED_LIBRARY_FILES
+                                | PackageManager.GET_PERMISSIONS);
+        if (mArchiveInfo != null) {
+            if (mArchiveInfo.applicationInfo.name != null) {
+                try {
+                    Class clazz = mDexClassLoader.loadClass(mArchiveInfo.applicationInfo.name);
+                    Constructor constructor = clazz.getConstructor();
+                    constructor.setAccessible(true);
+                    mPluginApplication = (Application) constructor.newInstance();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                } catch (NoSuchMethodException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (mPluginApplication != null) {
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Method attach = Application.class.getDeclaredMethod("attach", Context.class);
+                        attach.setAccessible(true);
+                        attach.invoke(mPluginApplication, getApplication());
+                    } catch (NoSuchMethodException e) {
+                        e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mPluginApplication.onCreate();
+                }
+            });
+        }
     }
 
     private boolean isAvailableNativeEntry(ZipEntry entry) {
@@ -421,5 +491,34 @@ public class PluginRuntime {
 
     public Class<? extends BasePluginRemoteService> getServiceClass() {
         return mServiceClass;
+    }
+
+    @Override
+    public void onTerminate() {
+        if (mPluginApplication != null) {
+            mPluginApplication.onTerminate();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        if (mPluginApplication != null) {
+            mPluginApplication.onConfigurationChanged(newConfig);
+        }
+    }
+
+    @Override
+    public void onLowMemory() {
+        if (mPluginApplication != null) {
+            mPluginApplication.onLowMemory();
+        }
+    }
+
+    @TargetApi(14)
+    @Override
+    public void onTrimMemory(int level) {
+        if (mPluginApplication != null) {
+            mPluginApplication.onTrimMemory(level);
+        }
     }
 }
